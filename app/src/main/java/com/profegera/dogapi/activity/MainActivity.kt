@@ -2,15 +2,20 @@ package com.profegera.dogapi.activity
 
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.isGone
+import androidx.core.view.isVisible
+import androidx.lifecycle.lifecycleScope
 import com.profegera.dogapi.R
 import com.profegera.dogapi.databinding.ActivityMainBinding
 import com.profegera.dogapi.model.DogResponse
 import com.profegera.dogapi.restclient.RetrofitClient
 import com.squareup.picasso.Picasso
+import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -32,6 +37,8 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        binding.progressBar.isGone = true
+
         loadDogImage()
 
         binding.imageView.setOnClickListener {
@@ -40,22 +47,32 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadDogImage() {
-        RetrofitClient.instance.getRandomDogImage().enqueue(object : Callback<DogResponse> {
-            override fun onResponse(call: Call<DogResponse>, response: Response<DogResponse>) {
-                if (response.isSuccessful) {
-                    val dogImageUrl = response.body()?.message
-                    if (dogImageUrl != null) {
-                        Picasso.get()
-                            .load(dogImageUrl)
-                            .into(binding.imageView)
+
+        binding.imageView.setImageDrawable(null)
+        binding.progressBar.isVisible = true
+
+        lifecycleScope.launch {
+            RetrofitClient.instance.getRandomDogImage().enqueue(object : Callback<DogResponse> {
+                override fun onResponse(call: Call<DogResponse>, response: Response<DogResponse>) {
+                    if (response.isSuccessful) {
+                        val dogImageUrl = response.body()?.message
+                        if (dogImageUrl != null) {
+
+                            Picasso.get()
+                                .load(dogImageUrl)
+                                .into(binding.imageView)
+                            binding.progressBar.isGone = true
+                        }
                     }
                 }
-            }
 
-            override fun onFailure(call: Call<DogResponse>, t: Throwable) {
-                Log.e("API_ERROR", t.message.toString())
-            }
-        })
+                override fun onFailure(call: Call<DogResponse>, t: Throwable) {
+                    binding.progressBar.isGone = true
+                    Log.e("API_ERROR", t.message.toString())
+                }
+            })
+        }
+
     }
 
 }
